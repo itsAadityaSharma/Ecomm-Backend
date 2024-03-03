@@ -13,6 +13,7 @@ const categoriesRouters = require("./routes/Category");
 const userRouter = require("./routes/User");
 const authRouter = require("./routes/Auth");
 const cartRouter = require("./routes/Cart");
+const orderRouter = require("./routes/Order");
 
 //middle-wares
 server.use(cors());
@@ -22,7 +23,8 @@ server.use("/brands", brandsRouters.router);
 server.use("/categories", categoriesRouters.router);
 server.use("/users", userRouter.router);
 server.use("/auth", authRouter.router);
-server.use("/cart", cartRouter.router);
+server.use("/carts", cartRouter.router);
+server.use("/orders", orderRouter.router);
 
 async function main() {
   await mongoose.connect("mongodb://127.0.0.1:27017/ecommerce");
@@ -34,8 +36,6 @@ main().catch((err) => console.log(err));
 server.get("/", (req, res) => {
   res.json({ status: "success" });
 });
-
-server.post("/products", createProduct);
 
 server.listen(8080, () => {
   console.log("Server started");
