@@ -1,4 +1,4 @@
-//9:40
+//9:54
 const express = require("express");
 const server = express();
 const cors = require("cors");
@@ -6,9 +6,10 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const passport = require("passport");
 const crypto = require("crypto");
-
-// const SQLiteStore = require("connect-sqlite3").session();
 const LocalStrategy = require("passport-local").Strategy;
+const JwtStrategy = require("passport-jwt").Strategy;
+const ExtractJwt = require("passport-jwt").ExtractJwt;
+const jwt = require("jsonwebtoken");
 
 //Routes
 const productsRouters = require("./routes/Products");
@@ -19,9 +20,16 @@ const authRouter = require("./routes/Auth");
 const cartRouter = require("./routes/Cart");
 const orderRouter = require("./routes/Order");
 const { User } = require("./Model/User");
+const { sanitizerUser, isAuth } = require("./services/common");
+
+const SECRET_KEY = "SECRET_KEY";
+
+//JST options
+const opts = {};
+opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
+opts.secretOrKey = SECRET_KEY; //TODO : should not be in code
 
 //middle-wares
-
 server.use(
   session({
     secret: "keyboard cat",
@@ -34,24 +42,27 @@ server.use(passport.authenticate("session"));
 
 server.use(cors());
 server.use(express.json()); // to parse request body
-server.use("/products", isAuth, productsRouters.router);
-server.use("/brands", brandsRouters.router);
-server.use("/categories", categoriesRouters.router);
-server.use("/users", userRouter.router);
+server.use("/products", isAuth(), productsRouters.router); //we can also use JWT token for client-only auth
+server.use("/brands", isAuth(), brandsRouters.router);
+server.use("/categories", isAuth(), categoriesRouters.router);
+server.use("/users", isAuth(), userRouter.router);
 server.use("/auth", authRouter.router);
-server.use("/carts", cartRouter.router);
-server.use("/orders", orderRouter.router);
+server.use("/carts", isAuth(), cartRouter.router);
+server.use("/orders", isAuth(), orderRouter.router);
 
 //passport Strategy
 passport.use(
-  new LocalStrategy(async function (username, password, done) {
-    //by default passport uses username
+  "local",
+  new LocalStrategy({ usernameField: "email" }, async function (
+    email,
+    password,
+    done
+  ) {
     try {
-      const user = await User.findOne({ email: username }).exec();
+      const user = await User.findOne({ email: email }).exec();
       if (!user) {
-        done(null, false, { message: "Invalid credentials" });
+        return done(null, false, { message: "Invalid credentials" });
       }
-
       crypto.pbkdf2(
         password,
         user.salt,
@@ -60,13 +71,32 @@ passport.use(
         "sha256",
         async function (err, hashedPassword) {
           if (!crypto.timingSafeEqual(user.password, hashedPassword)) {
-            done(null, false, { message: "Invalid credentials" });
+            return done(null, false, { message: "Invalid credentials" });
           }
-          done(null, user);
+          const token = jwt.sign(sanitizerUser(user), SECRET_KEY);
+          done(null, token);
         }
       );
     } catch (err) {
       done(err);
+    }
+  })
+);
+
+// JWT Strategy
+passport.use(
+  "jwt",
+  new JwtStrategy(opts, async function (jwt_payload, done) {
+    console.log({ jwt_payload });
+    try {
+      const user = await User.findOne({ id: jwt_payload.sub });
+      if (user) {
+        return done(null, sanitizerUser(user)); //this calls serializer user
+      } else {
+        return done(null, false);
+      }
+    } catch (err) {
+      return done(err, false);
     }
   })
 );
@@ -82,7 +112,7 @@ passport.serializeUser(function (user, cb) {
 
 //This creates session variables req.user when called from authorized request
 passport.deserializeUser(function (user, cb) {
-  console.log("de-serialize", user);
+  console.log("de-serialize-----------------", user);
   process.nextTick(function () {
     return cb(null, user);
   });
@@ -99,14 +129,6 @@ async function main() {
 server.get("/", (req, res) => {
   res.json({ status: "success" });
 });
-
-function isAuth(req, res, done) {
-  if (req.user) {
-    done();
-  } else {
-    res.send(401);
-  }
-}
 
 server.listen(8080, () => {
   console.log("Server started");
