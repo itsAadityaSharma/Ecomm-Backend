@@ -19,17 +19,21 @@ const userRouter = require("./routes/User");
 const authRouter = require("./routes/Auth");
 const cartRouter = require("./routes/Cart");
 const orderRouter = require("./routes/Order");
+const cookieParser = require("cookie-parser");
 const { User } = require("./Model/User");
-const { sanitizerUser, isAuth } = require("./services/common");
+const { sanitizerUser, isAuth, cookieExtractor } = require("./services/common");
 
 const SECRET_KEY = "SECRET_KEY";
 
 //JST options
 const opts = {};
-opts.jwtFromRequest = ExtractJwt.fromAuthHeaderAsBearerToken();
+opts.jwtFromRequest = cookieExtractor;
 opts.secretOrKey = SECRET_KEY; //TODO : should not be in code
 
 //middle-wares
+server.use(express.static("build"));
+server.use(cookieParser());
+
 server.use(
   session({
     secret: "keyboard cat",
@@ -74,7 +78,7 @@ passport.use(
             return done(null, false, { message: "Invalid credentials" });
           }
           const token = jwt.sign(sanitizerUser(user), SECRET_KEY);
-          done(null, token);
+          done(null, { token });
         }
       );
     } catch (err) {
