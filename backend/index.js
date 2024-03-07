@@ -1,4 +1,4 @@
-//10:08:00
+//10:17:00
 const express = require("express");
 const server = express();
 const cors = require("cors");
@@ -93,7 +93,7 @@ passport.use(
   new JwtStrategy(opts, async function (jwt_payload, done) {
     console.log({ jwt_payload });
     try {
-      const user = await User.findOne({ id: jwt_payload.sub });
+      const user = await User.findById(jwt_payload.id.id);
       if (user) {
         return done(null, sanitizerUser(user)); //this calls serializer user
       } else {

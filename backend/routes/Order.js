@@ -11,7 +11,7 @@ const router = express.Router();
 // /products is alreday added in base path
 router
   .post("/", createOrder)
-  .get("/user/:userId", fetchOrderByUser)
+  .get("/own", fetchOrderByUser)
   .patch("/:id", updateOrder)
   .get("/", fetchAllOrders);
 
