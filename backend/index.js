@@ -23,6 +23,10 @@ const { User } = require("./Model/User");
 const { sanitizerUser, isAuth, cookieExtractor } = require("./services/common");
 
 const SECRET_KEY = "SECRET_KEY";
+//RazorPay
+const Razorpay = require("razorpay");
+const path = require("path");
+require("dotenv").config();
 
 //JST options
 const opts = {};
@@ -30,6 +34,7 @@ opts.jwtFromRequest = cookieExtractor;
 opts.secretOrKey = SECRET_KEY; //TODO : should not be in code
 
 //middle-wares
+
 server.use(express.static("build"));
 server.use(cookieParser());
 
@@ -52,8 +57,10 @@ server.use("/users", isAuth(), userRouter.router);
 server.use("/auth", authRouter.router);
 server.use("/carts", isAuth(), cartRouter.router);
 server.use("/orders", isAuth(), orderRouter.router);
+server.use(express.urlencoded({ extended: true }));
 
 //passport Strategy
+
 passport.use(
   "local",
   new LocalStrategy({ usernameField: "email" }, async function (
@@ -77,7 +84,12 @@ passport.use(
             return done(null, false, { message: "Invalid credentials" });
           }
           const token = jwt.sign(sanitizerUser(user), SECRET_KEY);
-          done(null, { token });
+          done(null, {
+            id: user.id,
+            role: user.role,
+            email: user.email,
+            token,
+          });
         }
       );
     } catch (err) {
@@ -120,6 +132,36 @@ passport.deserializeUser(function (user, cb) {
     return cb(null, user);
   });
 });
+
+//--------------------------------------------------------------------------
+// RZP PAYMENT
+
+const instance = new Razorpay({
+  key_id: process.env.RAZOR_PAY_API_KEY,
+  key_secret: process.env.RAZOR_PAY_API_SECRET,
+});
+
+server.get("/getKey", (req, res) => {
+  res.status(200).json({ key: process.env.RAZOR_PAY_API_KEY });
+});
+
+server.post("/razorpay", async (req, res) => {
+  const options = {
+    amount: Number(req.body.amount) * 80,
+    currency: "INR",
+  };
+  try {
+    const order = await instance.orders.create(options);
+    res.status(200).json(order);
+  } catch (err) {
+    res.status(400).json(err);
+  }
+});
+server.post("/paymentVerification", async (req, res) => {
+  res.status(200).json({ success: true });
+});
+
+//--------------------------------------------------------------------------
 
 //Payment
 const stripe = require("stripe")(
