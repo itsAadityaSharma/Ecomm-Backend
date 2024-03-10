@@ -164,9 +164,9 @@ server.post("/paymentVerification", async (req, res) => {
 //--------------------------------------------------------------------------
 
 //Payment
-const stripe = require("stripe")(
-  "sk_test_51OsKT3SGlh95KKhLdrWzP2MPEJkUTcfHuUlnp2gqpktiwZkiFb9tuPAxJMMXn0E4LFKwC8u58uDrGFTnKDU2RIsZ00qt3UlhvL"
-);
+// const stripe = require("stripe")(
+//   "sk_test_51OsKT3SGlh95KKhLdrWzP2MPEJkUTcfHuUlnp2gqpktiwZkiFb9tuPAxJMMXn0E4LFKwC8u58uDrGFTnKDU2RIsZ00qt3UlhvL"
+// );
 
 const calculateOrderAmount = (items) => {
   // Replace this constant with a calculation of the order's amount
