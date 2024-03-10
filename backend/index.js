@@ -10,7 +10,6 @@ const LocalStrategy = require("passport-local").Strategy;
 const JwtStrategy = require("passport-jwt").Strategy;
 const ExtractJwt = require("passport-jwt").ExtractJwt;
 const jwt = require("jsonwebtoken");
-
 //Routes
 const productsRouters = require("./routes/Products");
 const brandsRouters = require("./routes/Brands");
@@ -119,6 +118,37 @@ passport.deserializeUser(function (user, cb) {
   console.log("de-serialize-----------------", user);
   process.nextTick(function () {
     return cb(null, user);
+  });
+});
+
+//Payment
+const stripe = require("stripe")(
+  "sk_test_51OsKT3SGlh95KKhLdrWzP2MPEJkUTcfHuUlnp2gqpktiwZkiFb9tuPAxJMMXn0E4LFKwC8u58uDrGFTnKDU2RIsZ00qt3UlhvL"
+);
+
+const calculateOrderAmount = (items) => {
+  // Replace this constant with a calculation of the order's amount
+  // Calculate the order total on the server to prevent
+  // people from directly manipulating the amount on the client
+  return 1400;
+};
+
+server.post("/create-payment-intent", async (req, res) => {
+  const { items } = req.body;
+
+  // Create a PaymentIntent with the order amount and currency
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: calculateOrderAmount(items),
+    currency: "inr",
+    description: "Payment for goods or services",
+    payment_method_types: "card",
+    automatic_payment_methods: {
+      enabled: true,
+    },
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
   });
 });
 
